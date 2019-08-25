@@ -40,7 +40,7 @@ def generate_cubes(nCubes=100, nBorder=1, noise_rms=0.1, output_dir='random_cube
 def make_and_write(nCubes, nComp, i, nBorder, xarr, T, W, V, N, grdX, grdY, noise_rms, linename, output_dir):
     # wrapper for make_cube() and write_fits_cube()
 
-    results = make_cube(nComp, nBorder, xarr, T, W, V, N, grdX, grdY, noise_rms)
+    results = make_cube(nComp, nBorder, xarr, T, W, V, N, grdX, grdY, noise_rms, linename)
 
     write_fits_cube(results['cube'], nCubes, nComp, i, N, V, W, T, noise_rms,
                     results['Tmax'], results['Tmax_a'], results['Tmax_b'], linename,
@@ -114,17 +114,25 @@ def generate_xarr(linename):
     return xarr
 
 
-def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, noise_rms):
+def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, noise_rms, linename, radTransfer=True):
     # the length of Temp, Width, Voff, logN, gradX, and gradY should match the number of components
     xmat, ymat = np.indices((2 * nBorder + 1, 2 * nBorder + 1))
     cube = np.zeros((xarr.shape[0], 2 * nBorder + 1, 2 * nBorder + 1))
 
     results = {}
     results['Tmax_a'], results['Tmax_b'] = (0,) * 2
+    # note: need to add tau keywords
+
+    TCMB = 2.7315  # K
+    kwargs = {'background_tb': TCMB}
 
     for xx, yy in zip(xmat.flatten(), ymat.flatten()):
 
         spec = np.zeros(cube.shape[0])
+        if radTransfer:
+            spec = spec + TCMB
+            # set the background Tb to zero and allow radiative transfer do the work
+            kwargs['background_tb'] = 0
 
         for j in range(nComps):
             # define parameters
@@ -136,16 +144,29 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
             N = logN[j] * (1 + gradX[j][3] * (xx - 1) + gradY[j][3] * (yy - 1))
 
             # generate spectrum
-            spec_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V)
+            spec_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, **kwargs)
+
+            if radTransfer:
+                # radiatively add a slab between the observer and the previous slab
+                tau_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, return_tau_profile=True, **kwargs)
+                spec = spec * np.exp(-1.0 * tau_j[linename]) + spec_j
+            else:
+                # linearly combine each component to the total spectrum
+                spec = spec + spec_j
 
             if (xx == nBorder) and (yy == nBorder):
                 Tmaxj = np.max(spec_j)
+                if radTransfer:
+                    # baseline subtract the background
+                    Tmaxj = Tmaxj - TCMB
                 results['Tmax_{}'.format(ascii_lowercase[j])] = Tmaxj
 
-            # add each component to the total spectrum
-            spec = spec + spec_j
-
         cube[:, yy, xx] = spec
+
+        if radTransfer:
+            # baseline subtract the background
+            cube = cube - TCMB
+
         if (xx == nBorder) and (yy == nBorder):
             Tmax = np.max(spec)
             results['Tmax'] = Tmax
