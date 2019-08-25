@@ -66,6 +66,7 @@ class TestResults:
         val = self.table[Z_Key]
 
         n_plot = len(bin_edges) + 1
+
         if ncols != 2:
             ncols = int(np.sqrt(n_plot))
 
@@ -227,6 +228,8 @@ class TestResults:
         # recalculate some values
         self.table['true_vErr1'] = self.table['VLSR1'] - self.table['VLSR1_FIT']
         self.table['true_vErr2'] = self.table['VLSR2'] - self.table['VLSR2_FIT']
+        self.table['true_sigErr1'] = self.table['SIG1'] - self.table['SIG1_FIT']
+        self.table['true_sigErr2'] = self.table['SIG2'] - self.table['SIG2_FIT']
 
 
 
@@ -250,7 +253,8 @@ def plot_cmatrix_wrapper(y_true, y_pred, classes, **kwargs):
     plot_confusion_matrix(cm, classes, **kwargs)
 
 
-def plot_confusion_matrix(cm, classes, normalize=False, title=None, cmap=plt.cm.Blues, ax=None, verbose=False):
+def plot_confusion_matrix(cm, classes, normalize=False, title=None, cmap=plt.cm.Blues, ax=None, verbose=False,
+                          cbar=False):
     """
     Plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -276,9 +280,10 @@ def plot_confusion_matrix(cm, classes, normalize=False, title=None, cmap=plt.cm.
 
     im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
     ax.set_title(title)
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size='5%', pad=0.1)
-    plt.colorbar(im, cax=cax, orientation='vertical')
+    if cbar:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.1)
+        plt.colorbar(im, cax=cax, orientation='vertical')
 
     tick_marks = np.arange(len(classes))
     ax.set_xticks(tick_marks)
@@ -364,8 +369,58 @@ def plot_err(X, Y, Err=None, bins=30, range=None, ax=None, title=None):
     return ax
 
 
+
+
 #======================================================================================================================#
 # analysis (non-plotting) functions
+
+
+def get_ZBins(val, bin_edges, qname=""):
+
+    edges = bin_edges
+
+    n_plot = len(bin_edges) + 1
+
+    classes = ["1 comp", "2 comp"]
+
+    kwargs2 = {'classes': classes, 'normalize': True}#, 'title': title}
+
+    maskList = []
+    titleList = []
+
+    # first bin
+    mask = val < edges[0]
+    maskList.append(mask)
+    title = "{0} < {1}".format(qname, bin_edges[0])
+    titleList.append(title)
+
+    #self.plot_cmatrix(mask, ax=fig.add_subplot(nrows, ncols, 1), **kwargs2)
+
+    # middle bins
+    mid_edges = bin_edges[:-1]
+    if len(mid_edges) > 0:
+        for i in range(len(mid_edges)):
+            title = "{1} < {0} < {2}".format(qname, edges[i], edges[i + 1])
+            mask = val > edges[i]
+            mask = np.logical_and(mask, val < edges[i + 1])
+            maskList.append(mask)
+            titleList.append(title)
+            #self.plot_cmatrix(mask, ax=fig.add_subplot(nrows, ncols, i+2), **kwargs2)
+
+    # last bin
+    title = "{0} > {1}".format(qname, edges[-1])
+    titleList.append(title)
+    mask = val > edges[-1]
+    maskList.append(mask)
+
+    #self.plot_cmatrix(mask, ax=fig.add_subplot(nrows, ncols, n_plot), **kwargs2)
+
+    #fig.subplots_adjust(wspace=0.1, hspace=0.7)
+
+    #if returnFig:
+    #    return fig
+
+    return maskList, titleList
 
 
 
