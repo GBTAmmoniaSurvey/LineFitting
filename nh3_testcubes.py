@@ -121,6 +121,7 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
 
     results = {}
     results['Tmax_a'], results['Tmax_b'] = (0,) * 2
+    results['tau_a'], results['Tmax_b'] = (0,) * 2
     # note: need to add tau keywords
 
     TCMB = 2.7315  # K
@@ -155,10 +156,13 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
                 spec = spec + spec_j
 
             if (xx == nBorder) and (yy == nBorder):
-                Tmaxj = np.max(spec_j)
+
                 if radTransfer:
-                    # baseline subtract the background
-                    Tmaxj = Tmaxj - TCMB
+                    max_idx = np.argmax(spec_j)
+                    # account for the background and subtract the baseline
+                    Tmaxj = spec_j[max_idx] + TCMB*np.exp(-1.0 * tau_j[linename][max_idx]) - TCMB
+                else:
+                    Tmaxj = np.max(spec_j)
                 results['Tmax_{}'.format(ascii_lowercase[j])] = Tmaxj
 
         cube[:, yy, xx] = spec
