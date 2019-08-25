@@ -161,6 +161,8 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
                     Tmaxj = Tmaxj - TCMB
                 results['Tmax_{}'.format(ascii_lowercase[j])] = Tmaxj
 
+        cube[:, yy, xx] = spec
+
         if radTransfer:
             # baseline subtract the background
             cube[:, yy, xx] = cube[:, yy, xx] - TCMB
