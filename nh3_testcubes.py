@@ -172,7 +172,7 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
             cube[:, yy, xx] = cube[:, yy, xx] - TCMB
 
         if (xx == nBorder) and (yy == nBorder):
-            Tmax = np.max(spec)
+            Tmax = np.max(cube[:, yy, xx])
             results['Tmax'] = Tmax
 
     cube += np.random.randn(*cube.shape) * noise_rms
