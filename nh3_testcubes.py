@@ -43,9 +43,8 @@ def make_and_write(nCubes, nComp, i, nBorder, xarr, T, W, V, N, grdX, grdY, nois
     results = make_cube(nComp, nBorder, xarr, T, W, V, N, grdX, grdY, noise_rms, linename)
 
     write_fits_cube(results['cube'], nCubes, nComp, i, N, V, W, T, noise_rms,
-                    results['Tmax'], results['Tmax_a'], results['Tmax_b'], linename,
-                    output_dir)
-
+                    results['Tmax'], results['Tmax_a'], results['Tmax_b'],
+                    results['tau_a'], results['tau_b'], linename, output_dir)
 
 
 def generate_gradients(nCubes, random_seed=None):
@@ -121,7 +120,7 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
 
     results = {}
     results['Tmax_a'], results['Tmax_b'] = (0,) * 2
-    results['tau_a'], results['Tmax_b'] = (0,) * 2
+    results['tau_a'], results['tau_b'] = (0,) * 2
     # note: need to add tau keywords
 
     TCMB = 2.7315  # K
@@ -164,6 +163,8 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
                 else:
                     Tmaxj = np.max(spec_j)
                 results['Tmax_{}'.format(ascii_lowercase[j])] = Tmaxj
+                tau_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, return_tau=True)
+                results['tau_{}'.format(ascii_lowercase[j])] = tau_j[linename]
 
         cube[:, yy, xx] = spec
 
@@ -182,7 +183,7 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
 
 
 def write_fits_cube(cube, nCubes, nComps, i, logN, Voff, Width, Temp, noise_rms,
-                    Tmax, Tmax_a, Tmax_b, linename, output_dir='random_cubes'):
+                    Tmax, Tmax_a, Tmax_b, tau_a, tau_b, linename, output_dir='random_cubes'):
     """
     Function to write a test cube as a fits file
     Note: only currently compatible with nComp <= 2
@@ -237,6 +238,8 @@ def write_fits_cube(cube, nCubes, nComps, i, logN, Voff, Width, Temp, noise_rms,
     hdu.header['TMAX'] = Tmax
     hdu.header['TMAX-1'] = Tmax_a
     hdu.header['TMAX-2'] = Tmax_b
+    hdu.header['TAU1'] = tau_a
+    hdu.header['TAU2'] = tau_b
     hdu.header['RMS'] = noise_rms
     hdu.header['CRVAL3'] = nh3con.freq_dict[linename]
     hdu.header['RESTFRQ'] = nh3con.freq_dict[linename]
