@@ -113,7 +113,7 @@ def generate_xarr(linename):
     return xarr
 
 
-def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, noise_rms, linename, radTransfer=True):
+def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, noise_rms, linename, radTransfer = True):
     # the length of Temp, Width, Voff, logN, gradX, and gradY should match the number of components
     xmat, ymat = np.indices((2 * nBorder + 1, 2 * nBorder + 1))
     cube = np.zeros((xarr.shape[0], 2 * nBorder + 1, 2 * nBorder + 1))
@@ -124,6 +124,11 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
     # note: need to add tau keywords
 
     TCMB = 2.7315  # K
+
+    def cmb_terms(tau):
+        # returns CMB terms that ammonia.cold_ammonia() calculates
+        # this is an work around to the fact the background_tb in cold_ammonia() neither handles ndarray nor zeros well
+        return TCMB*(np.exp(-1.0*tau)-1)
 
     for xx, yy in zip(xmat.flatten(), ymat.flatten()):
 
@@ -139,34 +144,33 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
             V = Voff[j] + (gradX[j][2] * (xx - 1) + gradY[j][2] * (yy - 1))
             N = logN[j] * (1 + gradX[j][3] * (xx - 1) + gradY[j][3] * (yy - 1))
 
-            # generate spectrum
-            if radTransfer:
-                # radiatively add a slab between the observer and the previous slab
-                spec_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, background_tb=spec)
-            else:
-                # calculate the second slab independently
-                spec_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, background_tb=TCMB)
+            # generate spectrum for the slab
+            spec_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, background_tb=TCMB)
 
             if (xx == nBorder) and (yy == nBorder):
                 # get the tau and Tmax values for the current slab
-                tau_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, return_tau=True)
-                results['tau_{}'.format(ascii_lowercase[j])] = tau_j[linename]
+                tau0_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, return_tau=True)
+                results['tau_{}'.format(ascii_lowercase[j])] = tau0_j[linename]
 
-                if radTransfer:
-                    # a little expensive, but oh well.
-                    Tmaxj = np.max(ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, background_tb=TCMB))
-                else:
-                    Tmaxj = np.max(spec_j)
+                Tmaxj = np.max(spec_j)
                 results['Tmax_{}'.format(ascii_lowercase[j])] = Tmaxj
 
-            # combine the spectrum
-            spec = spec + spec_j
+            if radTransfer:
+                tau_j = ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, return_tau_profile=True)
+                tau_j = tau_j[linename]
+                # the CMB background terms are removed in the end (note: a simplier implementation could be used if
+                # cold_ammonia() takes in ndarray in addition to just a float for its background_tb parameter)
+                spec = spec * np.exp(-1.0 * tau_j) + spec_j - cmb_terms(tau_j)
+            else:
+                # combine the spectrum linearly
+                spec = spec + spec_j
 
         # finally subtract the CMB background, i.e., the baseline
-        cube[:, yy, xx] = spec - TCMB
+        spec = spec - TCMB
+        cube[:, yy, xx] = spec
 
         if (xx == nBorder) and (yy == nBorder):
-            Tmax = np.max(cube[:, yy, xx])
+            Tmax = np.max(spec)
             results['Tmax'] = Tmax
 
     cube += np.random.randn(*cube.shape) * noise_rms
