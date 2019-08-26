@@ -153,7 +153,6 @@ def make_cube(nComps, nBorder, xarr, Temp, Width, Voff, logN, gradX, gradY, nois
                 results['tau_{}'.format(ascii_lowercase[j])] = tau_j[linename]
 
                 if radTransfer:
-                    max_idx = np.argmax(spec_j)
                     # a little expensive, but oh well.
                     Tmaxj = np.max(ammonia.cold_ammonia(xarr, T, ntot=N, width=W, xoff_v=V, background_tb=TCMB))
                 else:
