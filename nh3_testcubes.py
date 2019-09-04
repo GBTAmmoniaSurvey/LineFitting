@@ -71,7 +71,8 @@ def generate_parameters(nCubes, random_seed=None, fix_vlsr=True):
     if random_seed:
         np.random.seed(random_seed)
 
-    nComps = np.random.choice([1, 2], nCubes)
+    #nComps = np.random.choice([1, 2], nCubes)
+    nComps = np.random.choice([1, 2, 2, 2, 2, 2, 2, 2, 2, 2], nCubes)
 
     Temp1 = 8 + np.random.rand(nCubes) * 17
     Temp2 = 8 + np.random.rand(nCubes) * 17
@@ -81,10 +82,12 @@ def generate_parameters(nCubes, random_seed=None, fix_vlsr=True):
     else:
         Voff1 = np.random.rand(nCubes) * 5 - 2.5
 
-    Voff2 = Voff1 + np.random.rand(nCubes) * 5 - 2.5
+    #Voff2 = Voff1 + np.random.rand(nCubes) * 5 - 2.5
+    Voff2 = Voff1 + np.random.rand(nCubes) * 1.0 + 1.5
 
     logN1 = 13 + 1.5 * np.random.rand(nCubes)
-    logN2 = 13 + 1.5 * np.random.rand(nCubes)
+    #logN2 = 13 + 1.5 * np.random.rand(nCubes)
+    logN2 = 13 + 0.2 * np.random.rand(nCubes)
 
     Width1NT = 0.1 * np.exp(1.5 * np.random.randn(nCubes))
     Width2NT = 0.1 * np.exp(1.5 * np.random.randn(nCubes))
